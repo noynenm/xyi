@@ -1,0 +1,538 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <windows.h>
+#include <locale.h>
+#include <malloc.h>
+#include <cstdlib>
+#include <conio.h>
+
+struct t_stack {
+	char element[30];
+	t_stack* next;
+};
+
+struct d_stack {
+	char element[30];
+	d_stack* next;
+};
+
+void DeleteStack(t_stack** s, d_stack** ss, int& count_el, int& counter_text_el, int& counter_digit_el);
+void show(t_stack* s, d_stack* s1);
+char menu();
+void AddNameFile(char* first_name, char* second_name);
+void CreatFile(FILE* text, int &counter, char* file_name);
+void SeeFile(FILE* text, char* name, int counter);
+void FromFileToStack(t_stack** t_begin, d_stack** d_begin, FILE* text_file, FILE* digit_file, int t_counter, int d_counter, char** name_files, int &count_el, int& counter_text_el, int& counter_digit_el);
+void AddStack(t_stack** t_begin, d_stack** d_begin, int& count_el, int& counter_text_el, int& counter_digit_el);
+void CounterStackElements(t_stack* t_begin, d_stack* d_begin, int &counter_text_el, int &counter_digit_el);
+void FromStackToFile(FILE* result_file, int r_counter, t_stack* t_begin, d_stack* d_begin, int count_el, int counter_text_el, int counter_digit_el);
+
+
+int main()
+{
+	SetConsoleCP(1251);
+	SetConsoleOutputCP(1251);
+	setlocale(LC_ALL, "Russian");
+
+	FILE* text_file = NULL;
+	FILE* digit_file = NULL;
+	FILE* result_file = NULL;
+
+	t_stack* t_begin = nullptr;
+	d_stack* d_begin = nullptr;
+
+	char** file_name;
+	char choose, nameresult[] = {"result.txt"};
+	int d_counter = 0, t_counter = 0, r_counter=0, count_el=0;
+
+	int counter_text_el = 0, counter_digit_el = 0;
+
+	bool menu_back, fun_back, check_stack=false; 
+	bool flagDel;
+
+	file_name = (char**)calloc(2, sizeof(char*));
+	for (int i = 0; i < 2; i++)
+		file_name[i] = (char*)calloc(30, sizeof(char));
+
+	while (1)
+	{
+		switch (menu())
+		{
+		case '1': 
+			menu_back = false;
+			while (1) {
+				system("CLS");
+				printf("\t СОЗДАТЬ ФАЙЛ\n 1 - Создать файл с текстом\n 2 - Создать файл с числами\n\n 0 - МЕНЮ");
+				rewind(stdin);
+				choose = _getch();
+				switch (choose) 
+				{
+				case '1': printf("\nВведите название файла c тектом:\t\t(имя файла.txt)");
+					AddNameFile(file_name[0], file_name[1]);
+					t_counter = 0; 
+					CreatFile(text_file, t_counter, file_name[0]);
+					break;
+				case '2': printf("\nВведите название файла с числами:\t\t(имя файла.txt)");
+					AddNameFile(file_name[1], file_name[0]);
+					d_counter = 0; 
+					CreatFile(digit_file, d_counter, file_name[1]);
+					break;
+				case '0': menu_back = true;
+					break;
+				default: system("CLS");
+				}
+				if (menu_back)
+					break;
+			}
+			system("CLS");
+			break;
+		case '2':
+			fun_back = false;
+			menu_back = false;
+			system("CLS");
+			printf("\t ПРОЧИТАТЬ ФАЙЛ\n 1 - Файл с текстом\n 2 - Файл с числами\n\n 0 - МЕНЮ");
+			while (1) {
+				if(fun_back)
+					printf("\t ПРОЧИТАТЬ ФАЙЛ\n 1 - Файл с текстом\n 2 - Файл с числами\n\n 0 - МЕНЮ");
+				rewind(stdin);
+				choose = _getch();
+				switch (choose)
+				{
+				case '1': 
+					if (!t_counter) {
+						fun_back = false;
+						printf("\nФайл с тектом не создан.");
+					}
+					else{
+						fun_back = true;
+						SeeFile(text_file, file_name[0], t_counter);
+					}
+					break;
+				case '2': 
+					if (!d_counter) {
+						fun_back = false;
+						printf("\nФайл с числами не создан.");
+					}
+					else {
+						fun_back = true;
+						SeeFile(digit_file, file_name[1], d_counter);
+					}
+					break;
+				case '0': menu_back = true;
+					break;
+				default: system("CLS");
+				}
+				if (menu_back)
+					break;
+			}
+			system("CLS");
+			break;
+		case '3': system("CLS");
+			if (d_counter == 0 || t_counter == 0) {
+				printf("Один из файлов не создан\n");
+			}
+			else {
+				check_stack = true;
+				FromFileToStack(&t_begin, &d_begin, text_file, digit_file, t_counter, d_counter, file_name, count_el, counter_text_el, counter_digit_el);
+				printf("Данные из файлов перенесены\n");
+			}
+			break;
+		case '4': system("CLS");
+			fun_back = false;
+			if (check_stack) {
+				CounterStackElements(t_begin, d_begin, counter_text_el, counter_digit_el);
+				AddStack(&t_begin, &d_begin, count_el, counter_text_el, counter_digit_el);
+			}
+			else printf("Для начала перенесите данные из файла\n");
+			break;
+		case '5': system("CLS");
+			menu_back = false;
+			if (check_stack) {
+				show(t_begin, d_begin);
+				printf("\n\n 0 - МЕНЮ");
+				while (1) {
+					fflush(stdin);
+					switch (choose = _getch()) {
+					case '0': system("CLS"); menu_back = true;
+						break;
+					default:;
+					}
+					if (menu_back)
+						break;
+				}
+			}
+			else printf("Стек пуст\n");
+			break;
+		case '6': system("CLS");
+			if (t_begin && d_begin) {
+				DeleteStack(&t_begin, &d_begin, count_el, counter_text_el, counter_digit_el);
+				printf("Элемент удален из стека\n");
+			}
+			else printf("Стек пуст\n");
+			break;
+		case '7':  system("CLS");
+			CounterStackElements(t_begin, d_begin, counter_text_el, counter_digit_el);
+			FromStackToFile(result_file, r_counter, t_begin, d_begin, count_el, counter_text_el, counter_digit_el);
+			printf("Данные записаны в файл\n");
+			break;
+		case '8': system("CLS");
+			if(counter_text_el == counter_digit_el)
+				SeeFile(result_file, nameresult, 1);
+			else 
+				SeeFile(result_file, nameresult, 2);
+			break;
+		case '0': system("CLS"); printf("Работа завершена.\n\n");
+			return 0;
+		default: system("CLS");
+		}
+	}
+}
+
+char menu()
+{
+	char choose;
+	printf("\t МЕНЮ");
+	printf("\n  1 - Создать файл"
+		"\n  2 - Прочитать файл"
+		"\n  3 - Перенести данные из файла в стэк"
+		"\n  4 - Добавить в стек"
+		"\n  5 - Просмотреть стек"
+		"\n  6 - Удалить из стека"
+		"\n  7 - Записать данные в файл (слово-число)"
+		"\n  8 - Прочитать файл с результатом"
+		"\n\n  0 - Выход\n");
+	rewind(stdin);
+	choose = _getch();
+	return choose;
+}
+
+void CreatFile(FILE* text, int &counter, char* file_name)
+{
+	system("CLS");
+	char str[100];
+	printf("Введите ваш текст (для завершение введите пустую строку):\n");
+	text = fopen(file_name, "w");
+	rewind(text);
+	while (1) {
+		gets_s(str, 100);
+		if (strcmp(str, "") == 0)
+			break;
+		else {
+			fseek(text, 0, 2);
+			fprintf(text, "%s\n", str);
+			counter++;
+		}
+
+	}
+	fclose(text);
+	system("CLS");
+}
+
+void SeeFile(FILE* text, char* name, int counter)
+{
+	system("CLS");
+	char str[100];
+	text = fopen(name, "r");
+	rewind(text);
+	while (counter) {
+		fgets(str, 100, text);
+		printf("%s\n", str);
+		counter--;
+	}
+	fclose(text);
+	printf("\n\nНажмите ENTER для возврата");
+	getchar();
+	system("CLS");
+}
+
+void AddNameFile(char* first_name, char* second_name)
+{
+	bool f_name = false;
+	while (strlen(first_name) == 0 || strstr(first_name, ".txt") == NULL || !strcmp(".txt", first_name) || !f_name) {
+		printf("\n>>");
+		rewind(stdin);
+		gets_s(first_name, 30);
+		f_name = true;
+		if (strcmp(first_name, second_name) == 0 && strlen(second_name) != 0) {
+			printf("Файл с таким именем уже существует!\n");
+			f_name = false;
+		}
+	}
+}
+
+void FromFileToStack(t_stack** t_begin, d_stack** d_begin, FILE* text_file, FILE* digit_file,int t_counter, int d_counter, char** name_files, int &count_el, int& counter_text_el, int& counter_digit_el)
+{
+	system("CLS");
+	char t_str[100];
+	char* stack_el = (char*)calloc(30, sizeof(char));
+	int i = 0, j = 0;
+	counter_text_el = 0, counter_digit_el = 0;
+
+	t_stack* t_point = *t_begin;
+
+	text_file = fopen(name_files[0], "r");
+	digit_file = fopen(name_files[1], "r");
+	rewind(text_file); rewind(digit_file);
+
+	while (t_counter) {
+		fgets(t_str, 100, text_file);
+		while (t_str[i]) {
+			if ((t_str[i] >= 'a' && t_str[i] <= 'z') || (t_str[i] >= 'A' && t_str[i] <= 'Z')) {
+				stack_el[j] = t_str[i];
+				j++;
+			}
+			if (t_str[i] == ' ' || t_str[i] == ',' || t_str[i] == '.' || t_str[i] == ':' || t_str[i] == ';' || t_str[i] == '!' || t_str[i] == '?' || t_str[i]=='\n') {
+				if (strcmp(stack_el, "") == 0) {
+					while (j != -1) {
+						stack_el[j] = '\0';
+						j--;
+					}
+				}
+				else {
+					counter_text_el++;
+					*t_begin = (t_stack*)calloc(1, sizeof(t_stack));
+					fflush(stdin);
+					strcpy((*t_begin)->element, stack_el);
+					(*t_begin)->next = t_point;
+					t_point = *t_begin;
+					while (j != -1) {
+						stack_el[j] = '\0';
+						j--;
+					}
+				}
+				j = 0;
+			}
+
+			i++;
+		}
+		t_counter--;
+		i = 0;
+	}
+
+	d_stack* d_point = *d_begin;
+	while (d_counter) {
+		fgets(t_str, 100, digit_file);
+		while (t_str[i]) {
+			if (t_str[i] >= '0' && t_str[i] <= '9') {
+				stack_el[j] = t_str[i];
+				j++;
+			}
+			if (t_str[i] == ' ' || t_str[i] == '\n') {
+				if (strcmp(stack_el, "") == 0) {
+					while (j != -1) {
+						stack_el[j] = '\0';
+						j--;
+					}
+				}
+				else {
+					counter_digit_el++;
+					*d_begin = (d_stack*)calloc(1, sizeof(d_stack));
+					fflush(stdin);
+					strcpy((*d_begin)->element, stack_el);
+					(*d_begin)->next = d_point;
+					d_point = *d_begin;
+					while (j != -1) {
+						stack_el[j] = '\0';
+						j--;
+					}
+				}
+				j = 0;
+			}
+
+			i++;
+		}
+		d_counter--;
+		i = 0;
+	}
+	fclose(text_file); fclose(digit_file);
+
+	if (counter_text_el > counter_digit_el)
+		count_el = counter_digit_el;
+	else count_el = counter_text_el;
+}
+
+void show(t_stack* s, d_stack* s1)
+{
+	system("CLS");
+	int i = 1;
+	printf("СТЕК\n  #   слова\n");
+	do
+	{
+		printf("  %d.  %s\n",i, s->element);
+		i++;
+		s = s->next;
+	} while (s);
+	i = 1;
+	printf("\nСТЕК\n  #   числа\n");
+	do
+	{
+		printf("  %d.  %s\n",i, s1->element);
+		i++;
+		s1 = s1->next;                  
+	} while (s1);
+}
+
+void CounterStackElements(t_stack* t_begin, d_stack* d_begin, int &counter_text_el, int &counter_digit_el)
+{
+	counter_text_el = 0, counter_digit_el = 0;
+	do
+	{
+		counter_text_el++;
+		t_begin = t_begin->next;
+	} while (t_begin);
+	do
+	{
+		counter_digit_el++;
+		d_begin = d_begin->next;
+	} while (d_begin);
+}
+
+void AddStack(t_stack** t_begin, d_stack** d_begin, int &count_el, int &counter_text_el, int &counter_digit_el)
+{
+	char choose;
+	t_stack* s1;
+	d_stack* s2;
+	
+	while (1) {
+		system("CLS");
+		printf("\t ДОБАВИТЬ В СТЕК\n 1 - Слова\n 2 - Числа\n\n 0 - МЕНЮ");
+		fflush(stdin);
+		choose = _getch();
+		switch (choose)
+		{
+		case '1': 
+			s1 = *t_begin;
+			do
+			{
+				puts("\nВведите слово >>");
+				fflush(stdin);
+				*t_begin = (t_stack*)calloc(1, sizeof(t_stack));
+				gets_s((*t_begin)->element,30);
+				counter_text_el++;
+				(*t_begin)->next = s1;
+				s1 = *t_begin;              
+				puts("Продолжить (y/n)");
+				fflush(stdin);
+			} while (_getch() == 'y');
+			break;
+		case '2':
+			s2 = *d_begin;
+			do
+			{
+				puts("\nВведите число >>");
+				fflush(stdin);
+				*d_begin = (d_stack*)calloc(1, sizeof(d_stack));
+				gets_s((*d_begin)->element, 30);
+				counter_digit_el++;
+				(*d_begin)->next = s2;              
+				s2 = *d_begin;   
+				puts("Продолжить (y/n)");
+				fflush(stdin);
+			} while (_getch() == 'y');
+			break;
+		case '0': system("CLS");
+			if (counter_text_el >= counter_digit_el)
+				count_el = counter_digit_el;
+			else if (counter_text_el <= counter_digit_el)
+				count_el = counter_text_el;
+			return;
+		default:;
+		}
+	}
+
+}
+
+void FromStackToFile(FILE* result_file, int r_counter, t_stack* t_begin, d_stack* d_begin, int count_el, int counter_text_el, int counter_digit_el)
+{
+	bool textflag = false, digitflag = false, cheredflag = true, otherflag = true;
+	int other_el;
+	if (counter_digit_el > counter_text_el) {
+		other_el = counter_digit_el - counter_text_el;
+		digitflag = true;
+	}
+	else if (counter_text_el > counter_digit_el) {
+		textflag = true;
+		other_el = counter_text_el - counter_digit_el;
+	}
+	else if (counter_text_el == counter_digit_el)
+		other_el = 0;
+
+	
+	
+	result_file = fopen("result.txt", "w");
+	rewind(result_file);
+	while (otherflag) {
+		if (cheredflag) {
+			do {
+				fprintf(result_file, "%s %s ", t_begin->element, d_begin->element);
+				t_begin = t_begin->next;
+				d_begin = d_begin->next;
+				count_el--;
+			} while (count_el);
+			cheredflag = false;
+			fprintf(result_file, "\n");
+		}
+		if (other_el == 0)
+			break;
+		else {
+			while (other_el) {
+				if (digitflag && d_begin != NULL) {
+					fprintf(result_file, "%s ", d_begin->element);
+					d_begin = d_begin->next;
+				}else if (textflag && t_begin != NULL) {
+					fprintf(result_file, "%s ", t_begin->element);
+					t_begin = t_begin->next;
+				}
+				other_el--;
+			}
+		}
+	}
+		
+	fclose(result_file);
+	system("CLS");
+}
+
+void DeleteStack(t_stack** s, d_stack** ss, int& count_el, int& counter_text_el, int& counter_digit_el)
+{
+	t_stack* s1, s2;
+	d_stack* ss1, ss2;
+
+	char st[50], choose;
+	while (1) {
+		printf("\t УДАЛИТЬ ВЕРШИНУ СТЕКА\n 1 - Слова\n 2 - Числа\n\n 0 - МЕНЮ");
+		rewind(stdin);
+		switch (choose = _getch())
+		{
+		case '1':
+			system("CLS");
+			strcpy(st, (*s)->element);
+			s1 = *s;
+			s2 = **s;
+			*s = (*s)->next;
+			free(s1);
+			counter_text_el--;
+			printf("Cлово «%s» удалено из стека\n",st);
+			break;
+		case '2':
+			system("CLS");
+			strcpy(st, (*ss)->element);
+			ss1 = *ss;
+			ss2 = **ss;
+			*ss = (*ss)->next;
+			free(ss1);
+			counter_digit_el--;
+			printf("Число «%s» удалено из стека\n", st);
+			break;
+		case '0': system("CLS");
+			if (counter_text_el >= counter_digit_el)
+				count_el = counter_digit_el;
+			else if (counter_text_el <= counter_digit_el)
+				count_el = counter_text_el; 
+			return;
+		default:system("CLS");
+		}
+
+	}
+}
